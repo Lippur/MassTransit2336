@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Autofac;
-using GreenPipes;
 using MassTransit;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -21,41 +15,31 @@ namespace MassTransit2336
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices (IServiceCollection services)
         {
-            services.AddMassTransitHostedService();
-        }
-
-        public void ConfigureContainer (ContainerBuilder builder)
-        {
-            builder.RegisterGeneric(typeof(PongFilter<>))
-                .AsSelf()
-                .InstancePerLifetimeScope();
-
-            builder.RegisterType<PingConsumer>()
-                .As<IConsumer<Ping>>()
-                .InstancePerLifetimeScope();
+            services.AddScoped(typeof(PongFilter<>));
+            services.AddScoped<PingConsumer>();
             
-            builder.AddMassTransit(cfg =>
+            services.AddMassTransit(cfg =>
             {
                 cfg.AddConsumer<PingConsumer>();
                 cfg.UsingInMemory((context, config) =>
                 {
-                    AutofacFilterExtensions.UseSendFilter(config, typeof(PongFilter<>), context);
+                    config.UseSendFilter(typeof(PongFilter<>), context);
                     config.ConfigureEndpoints(context);
                 });
             });
             
-            builder.AddMediator(cfg =>
+            services.AddMediator(cfg =>
             {
                 cfg.AddConsumer<PingConsumer>();
                 cfg.ConfigureMediator((context, config) =>
                 {
-                    AutofacFilterExtensions.UseSendFilter(config, typeof(PongFilter<>), context);
-                    config.ConfigureConsumer(context, typeof(PingConsumer));
+                    config.UseSendFilter(typeof(PongFilter<>), context);
                 });
             });
+            
+            services.AddMassTransitHostedService();
         }
         
         public void Configure (IApplicationBuilder app, IWebHostEnvironment env)
